@@ -1,0 +1,46 @@
+packer {
+  required_plugins {
+    amazon = {
+      version = ">= 1.0.0"
+      source  = "github.com/hashicorp/amazon"
+    }
+  }
+}
+
+source "amazon-ebs" "gold-image" {
+  ami_name      = "gold-image-{{timestamp}}"
+  instance_type = "t2.micro"
+  region        = var.aws_region
+
+  source_ami_filter {
+    filters = {
+      name                = "amzn2-ami-hvm-*-x86_64-gp2"
+      root-device-type    = "ebs"
+      virtualization-type = "hvm"
+    }
+    most_recent = true
+    owners      = ["amazon"]
+  }
+
+  ssh_username = "ec2-user"
+
+  tags = {
+    Environment = "production"
+    Name        = "Gold Image"
+  }
+}
+
+build {
+  sources = ["source.amazon-ebs.gold-image"]
+
+  provisioner "shell" {
+    script = "./scripts/install-dependencies.sh"
+  }
+
+  provisioner "shell" {
+    script = "./scripts/post-process.sh"
+    environment_vars = [
+      "ARTIFACTORY_URL=${var.artifactory_url}"
+    ]
+  }
+}
