@@ -1,0 +1,44 @@
+name: Build Gold Image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: "1.8.5"
+
+      - name: Packer Init
+        working-directory: ./packer
+        run: packer init .
+
+      - name: Packer Validate
+        working-directory: ./packer
+        run: packer validate .
+
+      - name: Build AMI
+        working-directory: ./packer
+        run: packer build .
